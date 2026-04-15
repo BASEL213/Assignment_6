@@ -1,57 +1,51 @@
-name: Controlled Training Pipeline (Train Fails)
+name: ML Training Pipeline
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - "**"
 
 jobs:
-  # 1. LINTER (SUCCESS)
   linter:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.10"
+      - name: Run Linter
+        run: |
+          echo "Running linter checks..."
+          echo "Linter passed successfully."
 
-      - name: Install linter
-        run: pip install flake8
-
-      - name: Run linter
-        run: echo "Linter passed successfully"
-
-  # 2. TRAIN (FORCED FAILURE + ARTIFACT)
   train:
     runs-on: ubuntu-latest
     needs: linter
-    if: always()
+    if: |
+      github.ref == 'refs/heads/main' &&
+      contains(github.event.head_commit.message, '[run-train]')
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.10"
-
-      - name: Install dependencies
-        run: echo "Dependencies installed"
-
-      # Create error log 
-      - name: Train model
+      - name: Run Training Job
         run: |
-          echo "Simulating training failure..." | tee error_logs.txt
-          exit 1
+          echo "Starting GPU training job..."
+          echo "Training complete."
 
-      # Upload artifact ONLY if failure happens
-      - name: Upload error logs
+      - name: Create error log file on failure
+        if: failure()
+        run: |
+          echo "Training failed. Collecting error logs..." > error_logs.txt
+          echo "Check the logs above for details." >> error_logs.txt
+
+      - name: Upload error_logs.txt as Artifact
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: error-logs
           path: error_logs.txt
 
-      # Always cleanup
       - name: Cleanup
         if: always()
         run: echo "Cleaning up temporary cloud volumes..."
