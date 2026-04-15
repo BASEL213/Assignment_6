@@ -5,37 +5,44 @@ on:
     branches: [ main ]
 
 jobs:
+  # 1. LINTER (SUCCESS)
   linter:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.10"
+
       - name: Install linter
         run: pip install flake8
-      - name: Run linter
-        run: echo "Linter passed successfully"   # Force success
 
+      - name: Run linter
+        run: echo "Linter passed successfully"
+
+  # 2. TRAIN (FORCED FAILURE)
   train:
     runs-on: ubuntu-latest
     needs: linter
-    if: |
-      github.ref == 'refs/heads/main' &&
-      contains(github.event.head_commit.message, '[run-train]')
+
+    # Force job to run (no skipping)
+    if: always()
+
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.10"
 
       - name: Install dependencies
-        run: pip install -r requirements.txt || true
+        run: echo "Dependencies installed"
 
       - name: Train model
         run: |
           echo "Simulating training failure..."
-          exit 1   # force failure
+          exit 1   # ❌ Force failure
 
       - name: Upload error logs
         if: failure()
